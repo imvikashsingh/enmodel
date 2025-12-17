@@ -1,0 +1,42 @@
+import os
+import joblib
+import argparse
+from sklearn.ensemble import RandomForestClassifier
+from google.cloud import storage
+
+def train_model():
+    # AIP_MODEL_DIR is provided by Vertex AI automatically 
+    # if you define base_output_dir in the job.
+    model_dir = os.environ.get('AIP_MODEL_DIR')
+    
+    # 1. Dummy Training Data & Model
+    print("Loading data and training...")
+    X = [[1, 2], [3, 4]]
+    y = [0, 1]
+    model = RandomForestClassifier()
+    model.fit(X, y)
+
+    # 2. Save the model
+    # We save to a temporary local file first
+    local_path = "model.joblib"
+    joblib.dump(model, local_path)
+    print(f"Model saved locally to {local_path}")
+
+    # 3. Upload local file to GCS
+    # We parse the gs:// path to get bucket and blob names
+    if model_dir:
+        storage_client = storage.Client()
+        bucket_name = model_dir.split('/')[2]
+        # The path after the bucket name
+        object_prefix = "/".join(model_dir.split('/')[3:])
+        
+        bucket = storage_client.bucket(bucket_name)
+        # We must name the file 'model.joblib' for Vertex standard containers
+        blob = bucket.blob(f"{object_prefix}model.joblib")
+        blob.upload_from_filename(local_path)
+        print(f"Model uploaded to {model_dir}")
+    else:
+        print("Error: AIP_MODEL_DIR not found.")
+
+if __name__ == "__main__":
+    train_model()
