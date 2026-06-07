@@ -1,0 +1,94 @@
+feast
+pandas
+numpy
+pydantic
+google-cloud-bigquery
+google-cloud-storage
+
+---
+import os
+import subprocess
+import sys
+from datetime import datetime
+
+def setup_environment():
+    """Setup necessary directories and install dependencies"""
+    
+    # Create directories
+    os.makedirs("data", exist_ok=True)
+    os.makedirs("feature_repo", exist_ok=True)
+    
+    # Install required packages
+    print("Installing required packages...")
+    packages = [
+        "feast", 
+        "pandas", 
+        "numpy", 
+        "sqlite3", 
+        "pydantic",
+        "google-cloud-bigquery",  # Not needed for local but Feast requires
+        "google-cloud-storage"
+    ]
+    
+    for package in packages:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+    
+    print("✅ Environment setup complete")
+
+def run_full_demo():
+    """Run complete feature store demo"""
+    
+    print("\n" + "="*60)
+    print("MANGO FEATURE STORE - BANK CHURN DEMO")
+    print("="*60)
+    
+    # Step 1: Generate sample data
+    print("\n📊 Step 1: Generating sample bank customer data...")
+    from mango.data_generator import generate_customer_data, generate_transaction_data
+    
+    customers_df = generate_customer_data(200)
+    customers_df.to_csv('data/raw_customer_features.csv', index=False)
+    print(f"  ✓ Generated {len(customers_df)} customer records")
+    
+    transactions_df = generate_transaction_data(customers_df.head(50), 20)
+    transactions_df.to_csv('data/raw_transaction_features.csv', index=False)
+    print(f"  ✓ Generated {len(transactions_df)} transaction records")
+    
+    # Step 2: Apply Feast features
+    print("\n🏗️ Step 2: Applying Feast feature definitions...")
+    from feast import FeatureStore
+    
+    # Initialize feature store
+    store = FeatureStore(repo_path=".")
+    
+    # Step 3: Materialize features
+    print("\n💾 Step 3: Materializing features to online store...")
+    from mango.materialize_features import materialize_all_features
+    materialize_all_features()
+    
+    # Step 4: Retrieve and display features
+    print("\n🔍 Step 4: Retrieving features for sample customers...")
+    from mango.retrieve_features import display_features_for_customers
+    
+    sample_customers = [1, 10, 50, 100]
+    features_df = display_features_for_customers(sample_customers)
+    
+    # Step 5: Show feature store statistics
+    print("\n📊 Step 5: Feature Store Statistics")
+    print("-" * 40)
+    
+    from mango.materialize_features import get_feature_store_metadata
+    store = get_feature_store_metadata()
+    
+    print("\n✨ Demo completed successfully!")
+    print("\n💡 You can now:")
+    print("  - Query features for any customer ID")
+    print("  - Get historical features for training ML models")
+    print("  - Track feature values over time")
+    print("  - Use features for real-time predictions")
+
+if __name__ == "__main__":
+    # Setup and run
+    setup_environment()
+    run_full_demo()
+================
