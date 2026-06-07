@@ -3,16 +3,16 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 def materialize_all_features():
-    """Materialize features from offline to online store"""
+    """Materialize features from offline to online store using DuckDB"""
     
     # Initialize feature store
     store = FeatureStore(repo_path=".")
     
-    # Materialize features for last 180 days
+    # Materialize features for last 365 days
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=180)
+    start_date = end_date - timedelta(days=365)
     
-    print(f"Materializing features from {start_date} to {end_date}")
+    print(f"🔄 Materializing features from {start_date.date()} to {end_date.date()}")
     
     try:
         store.materialize(
@@ -20,13 +20,29 @@ def materialize_all_features():
                 "customer_demographic_features",
                 "customer_behavior_features",
                 "transaction_summary_features",
-                "churn_label"
+                "churn_label",
+                "customer_risk_features"
             ],
             start_date=start_date,
             end_date=end_date
         )
-        print("✅ Features materialized successfully!")
+        print("✅ Features materialized successfully to DuckDB!")
         
+        # Verify materialization
+        print("\n📊 Verifying online store...")
+        sample_customers = [1, 10, 50, 100]
+        
+        for customer_id in sample_customers:
+            features = store.get_online_features(
+                features=[
+                    "customer_demographic_features:credit_score",
+                    "customer_behavior_features:is_active_member",
+                    "churn_label:churned"
+                ],
+                entity_rows=[{"customer_id": customer_id}]
+            ).to_dict()
+            print(f"  Customer {customer_id}: {features}")
+            
     except Exception as e:
         print(f"❌ Error during materialization: {e}")
 
@@ -36,7 +52,7 @@ def get_feature_store_metadata():
     store = FeatureStore(repo_path=".")
     
     print("\n" + "="*60)
-    print("FEATURE STORE METADATA")
+    print("🏪 FEATURE STORE METADATA")
     print("="*60)
     
     # List all entities
@@ -52,6 +68,7 @@ def get_feature_store_metadata():
         print(f"  - {fv.name}")
         print(f"    Features: {[f.name for f in fv.features]}")
         print(f"    TTL: {fv.ttl}")
+        print(f"    Tags: {fv.tags}")
     
     return store
 
